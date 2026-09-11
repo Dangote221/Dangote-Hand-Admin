@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Dangote Hand Share — Admin</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f8ff;
+      color: #123;
+    }
+
+    header {
+      background: #0757b8;
+      color: white;
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 24px;
+    }
+
+    header p {
+      margin-top: 6px;
+      opacity: 0.9;
+    }
+
+    .container {
+      width: 94%;
+      max-width: 1000px;
+      margin: 20px auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      color: #0757b8;
+      margin-bottom: 15px;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 10px;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    input {
+      border: 1px solid #ccd8e8;
+    }
+
+    button {
+      border: none;
+      background: #0757b8;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #064795;
+    }
+
+    .logout {
+      background: #d93025;
+    }
+
+    .approve {
+      background: #198754;
+    }
+
+    .reject {
+      background: #d93025;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .message {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .error {
+      background: #fdecec;
+      color: #a51d1d;
+    }
+
+    .success {
+      background: #e8f7ee;
+      color: #146c35;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 25px;
+      color: #0757b8;
+      margin-bottom: 5px;
+    }
+
+    .request {
+      border: 1px solid #d7e4f5;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+
+    .request p {
+      margin-top: 7px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .approved {
+      background: #d1e7dd;
+      color: #146c35;
+    }
+
+    .rejected {
+      background: #f8d7da;
+      color: #842029;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .actions button {
+      margin-top: 0;
+    }
+
+    .small {
+      color: #777;
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Dangote Hand Share — Admin</h1>
+  <p>Private Administration Dashboard</p>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <section id="loginSection" class="card">
+    <h2>Admin Login</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="Admin Email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+    >
+
+    <button onclick="login()">
+      Login
+    </button>
+
+    <div id="loginMessage"></div>
+  </section>
+
+
+  <!-- ADMIN DASHBOARD -->
+  <section id="dashboard" class="hidden">
+
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+
+      <p>
+        Logged in as:
+        <strong id="adminEmail"></strong>
+      </p>
+
+      <button class="logout" onclick="logout()">
+        Logout
+      </button>
+    </div>
+
+
+    <!-- STATISTICS -->
+    <div class="stats">
+
+      <div class="stat">
+        <strong id="totalRequests">0</strong>
+        Total Requests
+      </div>
+
+      <div class="stat">
+        <strong id="pendingRequests">0</strong>
+        Pending
+      </div>
+
+      <div class="stat">
+        <strong id="approvedRequests">0</strong>
+        Approved
+      </div>
+
+    </div>
+
+
+    <!-- REQUESTS -->
+    <div class="card">
+
+      <h2>Deposit Requests</h2>
+
+      <button onclick="loadRequests()">
+        🔄 Refresh Requests
+      </button>
+
+      <div id="requestMessage"></div>
+
+      <div id="requests">
+        Loading requests...
+      </div>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+  /* ==============================
+     SUPABASE
+     ============================== */
+
+  const SUPABASE_URL =
+    "https://xuecckytcnfeaxqzgjqi.supabase.co";
+
+  const SUPABASE_KEY =
+    "sb_publishable_0VpPpO9daE2OzH-uj9Rf_A_prrVvIdP";
+
+  const db =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  /* ==============================
+     MESSAGE
+     ============================== */
+
+  function showMessage(elementId, text, type) {
+
+    const box =
+      document.getElementById(elementId);
+
+    box.className =
+      "message " + type;
+
+    box.textContent = text;
+  }
+
+
+  /* ==============================
+     ADMIN LOGIN
+     ============================== */
+
+  async function login() {
+
+    const email =
+      document.getElementById("email")
+        .value
+        .trim();
+
+    const password =
+      document.getElementById("password")
+        .value;
+
+    if (!email || !password) {
+
+      showMessage(
+        "loginMessage",
+        "Please enter your email and password.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await db.auth.signInWithPassword({
+        email,
+        password
+      });
+
+
+    if (error) {
+
+      showMessage(
+        "loginMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    const user =
+      data.user;
+
+
+    /* CHECK ADMIN */
+
+    const {
+      data: profile,
+      error: profileError
+    } =
+      await db
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+
+
+    if (
+      profileError ||
+      !profile ||
+      profile.is_admin !== true
+    ) {
+
+      await db.auth.signOut();
+
+      showMessage(
+        "loginMessage",
+        "Access denied. This account is not an administrator.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    document
+      .getElementById("loginSection")
+      .classList.add("hidden");
+
+    document
+      .getElementById("dashboard")
+      .classList.remove("hidden");
+
+    document
+      .getElementById("adminEmail")
+      .textContent = user.email;
+
+
+    await loadRequests();
+  }
+
+
+  /* ==============================
+     LOAD REQUESTS
+     ============================== */
+
+  async function loadRequests() {
+
+    const box =
+      document.getElementById("requests");
+
+    box.innerHTML =
+      "Loading requests...";
+
+
+    const {
+      data,
+      error
+    } =
+      await db
+        .from("deposit_requests")
+        .select(`
+          *,
+          profiles (
+            full_name,
+            username
+          )
+        `)
+        .order(
+          "created_at",
+          { ascending: false }
+        );
+
+
+    if (error) {
+
+      box.innerHTML =
+        "<p>Unable to load requests.</p>";
+
+      showMessage(
+        "requestMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    updateStats(data || []);
+
+
+    if (!data || data.length === 0) {
+
+      box.innerHTML =
+        "<p>No deposit requests yet.</p>";
+
+      return;
+    }
+
+
+    box.innerHTML = "";
+
+
+    data.forEach(request => {
+
+      const status =
+        request.status || "pending";
+
+      const date =
+        request.created_at
+          ? new Date(
+              request.created_at
+            ).toLocaleString()
+          : "-";
+
+
+      const memberName =
+        request.profiles?.full_name ||
+        "Unknown member";
+
+      const username =
+        request.profiles?.username ||
+        "-";
+
+
+      const div =
+        document.createElement("div");
+
+      div.className =
+        "request";
+
+
+      let statusClass = "";
+
+      if (status === "approved") {
+        statusClass = "approved";
+      }
+
+      if (status === "rejected") {
+        statusClass = "rejected";
+      }
+
+
+      div.innerHTML = `
+
+        <h3>${escapeHtml(memberName)}</h3>
+
+        <p>
+          <strong>Username:</strong>
+          ${escapeHtml(username)}
+        </p>
+
+        <p>
+          <strong>Shares:</strong>
+          ${Number(request.shares || 0).toLocaleString()}
+        </p>
+
+        <p>
+          <strong>Amount:</strong>
+          ₦${Number(request.amount || 0).toLocaleString()}
+        </p>
+
+        <p>
+          <strong>Payment Reference:</strong>
+          ${escapeHtml(
+            request.payment_reference || "-"
+          )}
+        </p>
+
+        <p>
+          <strong>Date:</strong>
+          ${date}
+        </p>
+
+        <p style="margin-top:10px;">
+          <strong>Status:</strong>
+          <span class="status ${statusClass}">
+            ${status.toUpperCase()}
+          </span>
+        </p>
+
+        ${
+          status === "pending"
+          ? `
+            <div class="actions">
+
+              <button
+                class="approve"
+                onclick="updateStatus('${request.id}', 'approved')"
+              >
+                ✓ Approve
+              </button>
+
+              <button
+                class="reject"
+                onclick="updateStatus('${request.id}', 'rejected')"
+              >
+                ✕ Reject
+              </button>
+
+            </div>
+          `
+          : `
+            <p class="small">
+              This request has already been processed.
+            </p>
+          `
+        }
+
+      `;
+
+
+      box.appendChild(div);
+    });
+  }
+
+
+  /* ==============================
+     UPDATE STATUS
+     ============================== */
+
+  async function updateStatus(
+    requestId,
+    newStatus
+  ) {
+
+    const action =
+      newStatus === "approved"
+        ? "approve"
+        : "reject";
+
+
+    const confirmed =
+      confirm(
+        "Are you sure you want to " +
+        action +
+        " this deposit request?"
+      );
+
+
+    if (!confirmed) return;
+
+
+    const {
+      error
+    } =
+      await db
+        .from("deposit_requests")
+        .update({
+          status: newStatus
+        })
+        .eq("id", requestId);
+
+
+    if (error) {
+
+      showMessage(
+        "requestMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    showMessage(
+      "requestMessage",
+      "Request " +
+      newStatus +
+      " successfully.",
+      "success"
+    );
+
+
+    await loadRequests();
+  }
+
+
+  /* ==============================
+     STATISTICS
+     ============================== */
+
+  function updateStats(data) {
+
+    const total =
+      data.length;
+
+    const pending =
+      data.filter(
+        r =>
+          (r.status || "pending")
+            === "pending"
+      ).length;
+
+    const approved =
+      data.filter(
+        r =>
+          r.status === "approved"
+      ).length;
+
+
+    document
+      .getElementById("totalRequests")
+      .textContent = total;
+
+    document
+      .getElementById("pendingRequests")
+      .textContent = pending;
+
+    document
+      .getElementById("approvedRequests")
+      .textContent = approved;
+  }
+
+
+  /* ==============================
+     ESCAPE HTML
+     ============================== */
+
+  function escapeHtml(value) {
+
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+
+  /* ==============================
+     LOGOUT
+     ============================== */
+
+  async function logout() {
+
+    await db.auth.signOut();
+
+    document
+      .getElementById("dashboard")
+      .classList.add("hidden");
+
+    document
+      .getElementById("loginSection")
+      .classList.remove("hidden");
+
+    document
+      .getElementById("password")
+      .value = "";
+  }
+
+
+  /* ==============================
+     CHECK EXISTING SESSION
+     ============================== */
+
+  async function checkSession() {
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await db.auth.getSession();
+
+
+    if (!session) return;
+
+
+    const user =
+      session.user;
+
+
+    const {
+      data: profile
+    } =
+      await db
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+
+
+    if (
+      profile &&
+      profile.is_admin === true
+    ) {
+
+      document
+        .getElementById("loginSection")
+        .classList.add("hidden");
+
+      document
+        .getElementById("dashboard")
+        .classList.remove("hidden");
+
+      document
+        .getElementById("adminEmail")
+        .textContent = user.email;
+
+      await loadRequests();
+    }
+  }
+
+
+  checkSession();
+
+</script>
+
+</body>
+</html>
