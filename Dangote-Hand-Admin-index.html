@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dangote Hand Share — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#f4f8ff;color:#123}
+header{background:#0757b8;color:#fff;padding:22px 15px;text-align:center}
+header img{width:75px;height:75px;object-fit:contain;background:#fff;border-radius:50%;padding:5px;margin-bottom:8px}
+header h1{font-size:25px} header p{margin-top:6px;opacity:.9}
+.container{width:94%;max-width:900px;margin:20px auto}
+.card{background:#fff;border-radius:15px;padding:20px;margin-bottom:18px;box-shadow:0 3px 15px rgba(0,0,0,.08)}
+h2{color:#0757b8;margin-bottom:15px} h3{color:#0757b8;margin-bottom:8px}
+input,button{width:100%;padding:14px;margin-top:10px;border-radius:8px;font-size:15px}
+input{border:1px solid #ccd8e8;background:#fff}
+button{border:none;background:#0757b8;color:#fff;font-weight:bold;cursor:pointer}
+.logout,.reject{background:#d93025}.approve{background:#188038}
+.refresh{background:#fff;color:#0757b8;border:1px solid #0757b8}
+.hidden{display:none!important}
+.message{margin-top:12px;padding:12px;border-radius:8px;display:none}
+.success{display:block;background:#e8f7ee;color:#146c35}
+.error{display:block;background:#fdecec;color:#a51d1d}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat{background:#f8fbff;border:1px solid #d7e4f5;border-radius:12px;padding:18px 10px;text-align:center}
+.stat strong{display:block;font-size:28px;color:#0757b8;margin-bottom:5px}
+.request{border:1px solid #d7e4f5;border-radius:12px;padding:16px;margin-top:12px;background:#fbfdff}
+.request p{margin-top:7px;line-height:1.4;word-break:break-word}
+.status{display:inline-block;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:bold;margin-top:4px}
+.pending{background:#fff3cd;color:#856404}.approved{background:#e8f7ee;color:#146c35}.rejected{background:#fdecec;color:#a51d1d}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.empty{text-align:center;padding:25px 10px;color:#777}.loading{text-align:center;padding:20px;color:#0757b8}
+footer{text-align:center;color:#777;padding:25px 10px;font-size:13px}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr 1fr}.stat strong{font-size:22px}.actions{grid-template-columns:1fr}header h1{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+<img src="dangote-share-logo.jpg" alt="Dangote Hand Share Logo">
+<h1>Dangote Hand Share — Admin</h1>
+<p>Private Administration Dashboard</p>
+</header>
+
+<div class="container">
+<section id="loginSection" class="card">
+<h2>Admin Login</h2>
+<input id="adminEmail" type="email" placeholder="Admin Email" autocomplete="email">
+<input id="adminPassword" type="password" placeholder="Password" autocomplete="current-password">
+<button onclick="adminLogin()">Login</button>
+<div id="loginMessage" class="message"></div>
+</section>
+
+<section id="dashboardSection" class="hidden">
+<div class="card">
+<h2>Admin Dashboard</h2>
+<p>Logged in as: <strong id="adminEmailDisplay"></strong></p>
+<button class="refresh" onclick="loadRequests()">🔄 Refresh Requests</button>
+<button class="logout" onclick="adminLogout()">Logout</button>
+</div>
+
+<div class="stats">
+<div class="stat"><strong id="pendingCount">0</strong>Pending</div>
+<div class="stat"><strong id="approvedCount">0</strong>Approved</div>
+<div class="stat"><strong id="rejectedCount">0</strong>Rejected</div>
+</div>
+
+<div class="card">
+<h2>Member Deposit Requests</h2>
+<div id="requestsBox"><div class="loading">Loading requests...</div></div>
+<div id="dashboardMessage" class="message"></div>
+</div>
+</section>
+</div>
+
+<footer>© 2026 Dangote Hand Share — Private Admin</footer>
+
+<script>
+const SUPABASE_URL="https://xuecckytcnfeaxqzgjqi.supabase.co";
+const SUPABASE_KEY="sb_publishable_0VpPpO9daE2OzH-uj9Rf_A_prrVvIdP";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentAdmin=null;
+
+function showMessage(id,text,type){
+const el=document.getElementById(id);
+el.textContent=text;
+el.className="message "+type;
+}
+
+async function adminLogin(){
+const email=document.getElementById("adminEmail").value.trim();
+const password=document.getElementById("adminPassword").value;
+if(!email||!password){
+showMessage("loginMessage","Please enter your admin email and password.","error"); return;
+}
+const {data,error}=await db.auth.signInWithPassword({email,password});
+if(error){
+showMessage("loginMessage","Invalid login credentials.","error"); return;
+}
+currentAdmin=data.user;
+
+const {data:profile,error:profileError}=await db.from("profiles").select("is_admin").eq("id",currentAdmin.id).maybeSingle();
+
+if(profileError||!profile||profile.is_admin!==true){
+await db.auth.signOut(); currentAdmin=null;
+showMessage("loginMessage","Access denied. This account is not an administrator.","error"); return;
+}
+
+document.getElementById("loginSection").classList.add("hidden");
+document.getElementById("dashboardSection").classList.remove("hidden");
+document.getElementById("adminEmailDisplay").textContent=currentAdmin.email;
+await loadRequests();
+}
+
+async function loadRequests(){
+const box=document.getElementById("requestsBox");
+box.innerHTML='<div class="loading">Loading requests...</div>';
+
+const {data,error}=await db.from("deposit_requests").select("*").order("created_at",{ascending:false});
+
+if(error){
+box.innerHTML="<div class='empty'>Unable to load requests.</div>";
+showMessage("dashboardMessage",error.message,"error"); return;
+}
+
+updateStatistics(data||[]);
+if(!data||data.length===0){
+box.innerHTML='<div class="empty">No member deposit requests yet.</div>'; return;
+}
+
+const userIds=[...new Set(data.map(r=>r.user_id).filter(Boolean))];
+let profiles=[];
+if(userIds.length){
+const {data:profileData}=await db.from("profiles").select("id,full_name,username").in("id",userIds);
+profiles=profileData||[];
+}
+
+box.innerHTML="";
+data.forEach(request=>{
+const profile=profiles.find(p=>p.id===request.user_id);
+const memberName=profile?.full_name||"Member";
+const username=profile?.username||"—";
+const status=(request.status||"pending").toLowerCase();
+const date=request.created_at?new Date(request.created_at).toLocaleString():"—";
+
+const div=document.createElement("div");
+div.className="request";
+div.innerHTML=`
+<h3>${escapeHtml(memberName)}</h3>
+<p><strong>Username:</strong> ${escapeHtml(username)}</p>
+<p><strong>Shares:</strong> ${Number(request.shares||0).toLocaleString()}</p>
+<p><strong>Amount:</strong> ₦${Number(request.amount||0).toLocaleString()}</p>
+<p><strong>Payment Reference:</strong> ${escapeHtml(request.payment_reference||"—")}</p>
+<p><strong>Date:</strong> ${escapeHtml(date)}</p>
+<p><strong>Status:</strong><br><span class="status ${statusClass(status)}">${escapeHtml(status.toUpperCase())}</span></p>`;
+
+if(status==="pending"){
+const actions=document.createElement("div"); actions.className="actions";
+const approve=document.createElement("button"); approve.className="approve"; approve.textContent="✓ Approve"; approve.onclick=()=>updateRequest(request.id,"approved");
+const reject=document.createElement("button"); reject.className="reject"; reject.textContent="✕ Reject"; reject.onclick=()=>updateRequest(request.id,"rejected");
+actions.appendChild(approve); actions.appendChild(reject); div.appendChild(actions);
+}
+box.appendChild(div);
+});
+}
+
+async function updateRequest(requestId,newStatus){
+const action=newStatus==="approved"?"approve":"reject";
+if(!confirm(`Are you sure you want to ${action} this deposit request?`)) return;
+
+const {error}=await db.from("deposit_requests").update({status:newStatus}).eq("id",requestId);
+if(error){
+showMessage("dashboardMessage","Could not update request: "+error.message,"error"); return;
+}
+showMessage("dashboardMessage",`Request ${newStatus} successfully.`,"success");
+await loadRequests();
+}
+
+function updateStatistics(requests){
+let pending=0,approved=0,rejected=0;
+requests.forEach(r=>{
+const status=(r.status||"pending").toLowerCase();
+if(status==="approved") approved++;
+else if(status==="rejected") rejected++;
+else pending++;
+});
+document.getElementById("pendingCount").textContent=pending;
+document.getElementById("approvedCount").textContent=approved;
+document.getElementById("rejectedCount").textContent=rejected;
+}
+
+function statusClass(status){
+if(status==="approved") return "approved";
+if(status==="rejected") return "rejected";
+return "pending";
+}
+
+function escapeHtml(value){
+return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+async function adminLogout(){
+await db.auth.signOut();
+currentAdmin=null;
+document.getElementById("dashboardSection").classList.add("hidden");
+document.getElementById("loginSection").classList.remove("hidden");
+document.getElementById("adminPassword").value="";
+showMessage("loginMessage","You have been logged out.","success");
+}
+
+async function checkExistingSession(){
+const {data:{session}}=await db.auth.getSession();
+if(!session) return;
+currentAdmin=session.user;
+
+const {data:profile}=await db.from("profiles").select("is_admin").eq("id",currentAdmin.id).maybeSingle();
+
+if(profile&&profile.is_admin===true){
+document.getElementById("loginSection").classList.add("hidden");
+document.getElementById("dashboardSection").classList.remove("hidden");
+document.getElementById("adminEmailDisplay").textContent=currentAdmin.email;
+await loadRequests();
+}else{
+await db.auth.signOut(); currentAdmin=null;
+}
+}
+
+checkExistingSession();
+</script>
+</body>
+</html>
