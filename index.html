@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Dangote Hand Share — Admin</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f8ff;
+      color: #123;
+    }
+
+    header {
+      background: #0757b8;
+      color: white;
+      padding: 28px 15px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 27px;
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 16px;
+    }
+
+    .container {
+      width: 92%;
+      max-width: 850px;
+      margin: 22px auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      color: #0757b8;
+      margin-bottom: 15px;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input {
+      border: 1px solid #ccd8e8;
+      background: white;
+    }
+
+    button {
+      border: none;
+      background: #0757b8;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .logout {
+      background: #d93025;
+    }
+
+    .approve {
+      background: #16823b;
+    }
+
+    .reject {
+      background: #d93025;
+    }
+
+    .refresh {
+      background: #0757b8;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .message {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .success {
+      display: block;
+      background: #e8f7ee;
+      color: #146c35;
+    }
+
+    .error {
+      display: block;
+      background: #fdecec;
+      color: #a51d1d;
+    }
+
+    .request {
+      border: 1px solid #d7e4f5;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+
+    .request strong {
+      color: #0757b8;
+      font-size: 19px;
+    }
+
+    .request p {
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.approved {
+      background: #e8f7ee;
+      color: #146c35;
+    }
+
+    .status.rejected {
+      background: #fdecec;
+      color: #a51d1d;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .actions button {
+      margin-top: 0;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .topbar button {
+      width: auto;
+      min-width: 110px;
+      margin-top: 0;
+    }
+
+    .small {
+      color: #666;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      color: #777;
+      padding: 25px 10px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 550px) {
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      header h1 {
+        font-size: 23px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Dangote Hand Share — Admin</h1>
+  <p>Private Administration Dashboard</p>
+</header>
+
+
+<div class="container">
+
+  <!-- ADMIN LOGIN -->
+
+  <section id="loginSection" class="card">
+
+    <h2>Admin Login</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="Admin Email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+    >
+
+    <button onclick="adminLogin()">
+      Login
+    </button>
+
+    <div id="loginMessage" class="message"></div>
+
+  </section>
+
+
+  <!-- ADMIN DASHBOARD -->
+
+  <section id="dashboardSection" class="hidden">
+
+    <div class="card">
+
+      <div class="topbar">
+
+        <div>
+          <h2>Admin Dashboard</h2>
+
+          <p class="small">
+            Signed in as:
+            <span id="adminEmail"></span>
+          </p>
+        </div>
+
+        <button
+          class="logout"
+          onclick="logout()"
+        >
+          Logout
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- REQUESTS -->
+
+    <div class="card">
+
+      <div class="topbar">
+
+        <h2>Deposit Requests</h2>
+
+        <button
+          class="refresh"
+          onclick="loadRequests()"
+        >
+          Refresh
+        </button>
+
+      </div>
+
+      <div id="requestMessage" class="message"></div>
+
+      <div id="requests">
+        Loading requests...
+      </div>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<footer>
+  © 2026 Dangote Hand Share — Private Admin
+</footer>
+
+
+<script>
+
+  /* =========================================
+     SUPABASE
+     ========================================= */
+
+  const SUPABASE_URL =
+    "https://xuecckytcnfeaxqzgjqi.supabase.co";
+
+  const SUPABASE_KEY =
+    "sb_publishable_0VpPpO9daE2OzH-uj9Rf_A_prrVvIdP";
+
+
+  const db =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  /* =========================================
+     MESSAGE
+     ========================================= */
+
+  function showMessage(
+    elementId,
+    text,
+    type
+  ) {
+
+    const element =
+      document.getElementById(elementId);
+
+    element.textContent = text;
+
+    element.className =
+      "message " + type;
+  }
+
+
+  /* =========================================
+     ADMIN LOGIN
+     ========================================= */
+
+  async function adminLogin() {
+
+    const email =
+      document
+        .getElementById("email")
+        .value
+        .trim();
+
+    const password =
+      document
+        .getElementById("password")
+        .value;
+
+
+    if (!email || !password) {
+
+      showMessage(
+        "loginMessage",
+        "Please enter your email and password.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    /* LOGIN */
+
+    const {
+      data,
+      error
+    } =
+      await db.auth.signInWithPassword({
+
+        email: email,
+
+        password: password
+
+      });
+
+
+    if (error) {
+
+      showMessage(
+        "loginMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    /*
+      CHECK ADMIN STATUS
+
+      This uses the is_admin() function
+      that we already created in Supabase.
+    */
+
+    const {
+      data: adminCheck,
+      error: adminError
+    } =
+      await db.rpc("is_admin");
+
+
+    if (adminError) {
+
+      await db.auth.signOut();
+
+      showMessage(
+        "loginMessage",
+        "Admin verification failed: " +
+        adminError.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (adminCheck !== true) {
+
+      await db.auth.signOut();
+
+      showMessage(
+        "loginMessage",
+        "Access denied. This account is not an administrator.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    /* ADMIN LOGIN SUCCESS */
+
+    document
+      .getElementById("loginSection")
+      .classList
+      .add("hidden");
+
+
+    document
+      .getElementById("dashboardSection")
+      .classList
+      .remove("hidden");
+
+
+    document
+      .getElementById("adminEmail")
+      .textContent =
+      data.user.email;
+
+
+    await loadRequests();
+
+  }
+
+
+  /* =========================================
+     LOAD ALL REQUESTS
+     ========================================= */
+
+  async function loadRequests() {
+
+    const box =
+      document.getElementById("requests");
+
+
+    box.innerHTML =
+      "Loading requests...";
+
+
+    const {
+      data,
+      error
+    } =
+      await db
+        .from("deposit_requests")
+        .select("*")
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+
+      box.innerHTML =
+        "<p>Unable to load requests.</p>";
+
+      showMessage(
+        "requestMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (!data || data.length === 0) {
+
+      box.innerHTML =
+        "<p>No deposit requests yet.</p>";
+
+      return;
+    }
+
+
+    box.innerHTML = "";
+
+
+    data.forEach(
+      request => {
+
+        const status =
+          (
+            request.status ||
+            "pending"
+          ).toLowerCase();
+
+
+        const date =
+          request.created_at
+            ? new Date(
+                request.created_at
+              ).toLocaleString()
+            : "-";
+
+
+        const div =
+          document.createElement(
+            "div"
+          );
+
+
+        div.className =
+          "request";
+
+
+        div.innerHTML = `
+
+          <strong>
+            ${Number(
+              request.shares || 0
+            ).toLocaleString()}
+            Shares
+          </strong>
+
+          <p>
+            <b>Amount:</b>
+            ₦${Number(
+              request.amount || 0
+            ).toLocaleString()}
+          </p>
+
+          <p>
+            <b>Payment Reference:</b>
+            ${escapeHtml(
+              request.payment_reference || "-"
+            )}
+          </p>
+
+          <p>
+            <b>User ID:</b>
+            ${escapeHtml(
+              request.user_id || "-"
+            )}
+          </p>
+
+          <p>
+            <b>Date:</b>
+            ${date}
+          </p>
+
+          <p style="margin-top:10px;">
+
+            <b>Status:</b>
+
+            <span
+              class="status ${status}"
+            >
+              ${status.toUpperCase()}
+            </span>
+
+          </p>
+
+
+          ${
+            status === "pending"
+
+            ?
+
+            `
+
+            <div class="actions">
+
+              <button
+                class="approve"
+                onclick="updateRequest(
+                  '${request.id}',
+                  'approved'
+                )"
+              >
+                Approve
+              </button>
+
+
+              <button
+                class="reject"
+                onclick="updateRequest(
+                  '${request.id}',
+                  'rejected'
+                )"
+              >
+                Reject
+              </button>
+
+            </div>
+
+            `
+
+            :
+
+            ""
+          }
+
+        `;
+
+
+        box.appendChild(div);
+
+      }
+    );
+
+  }
+
+
+  /* =========================================
+     APPROVE / REJECT
+     ========================================= */
+
+  async function updateRequest(
+    requestId,
+    newStatus
+  ) {
+
+    const action =
+      newStatus === "approved"
+        ? "approve"
+        : "reject";
+
+
+    const confirmed =
+      confirm(
+        "Are you sure you want to " +
+        action +
+        " this deposit request?"
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    const {
+      error
+    } =
+      await db
+        .from("deposit_requests")
+        .update({
+
+          status: newStatus
+
+        })
+        .eq(
+          "id",
+          requestId
+        );
+
+
+    if (error) {
+
+      showMessage(
+        "requestMessage",
+        "Could not update request: " +
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    showMessage(
+      "requestMessage",
+      "Request " +
+      newStatus +
+      " successfully.",
+      "success"
+    );
+
+
+    await loadRequests();
+
+  }
+
+
+  /* =========================================
+     LOGOUT
+     ========================================= */
+
+  async function logout() {
+
+    await db.auth.signOut();
+
+
+    document
+      .getElementById("dashboardSection")
+      .classList
+      .add("hidden");
+
+
+    document
+      .getElementById("loginSection")
+      .classList
+      .remove("hidden");
+
+
+    document
+      .getElementById("password")
+      .value = "";
+
+  }
+
+
+  /* =========================================
+     SECURITY
+     ========================================= */
+
+  function escapeHtml(value) {
+
+    return String(value)
+
+      .replace(
+        /&/g,
+        "&amp;"
+      )
+
+      .replace(
+        /</g,
+        "&lt;"
+      )
+
+      .replace(
+        />/g,
+        "&gt;"
+      )
+
+      .replace(
+        /"/g,
+        "&quot;"
+      )
+
+      .replace(
+        /'/g,
+        "&#039;"
+      );
+
+  }
+
+
+  /* =========================================
+     CHECK EXISTING SESSION
+     ========================================= */
+
+  async function checkExistingSession() {
+
+    const {
+      data: {
+        session
+      }
+    } =
+      await db.auth.getSession();
+
+
+    if (!session) {
+      return;
+    }
+
+
+    const {
+      data: adminCheck
+    } =
+      await db.rpc("is_admin");
+
+
+    if (adminCheck === true) {
+
+      document
+        .getElementById("loginSection")
+        .classList
+        .add("hidden");
+
+
+      document
+        .getElementById("dashboardSection")
+        .classList
+        .remove("hidden");
+
+
+      document
+        .getElementById("adminEmail")
+        .textContent =
+        session.user.email;
+
+
+      await loadRequests();
+
+    }
+
+    else {
+
+      await db.auth.signOut();
+
+    }
+
+  }
+
+
+  checkExistingSession();
+
+
+</script>
+
+</body>
+</html>
